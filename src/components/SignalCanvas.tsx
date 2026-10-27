@@ -8,7 +8,7 @@ import { useEffect, useRef, type RefObject } from "react";
 
 type Burst = { s: number; amp: number; w: number; phase: number; counted: boolean };
 
-const SPEED = 54; // px per second the trace scrolls
+export type Sampler = (t: number) => number;
 const STEP = 2; // px between samples
 const TH = 1.55; // threshold, in amplitude units
 const CAP = 3.1;
@@ -45,10 +45,21 @@ export function SignalCanvas({
   hostRef,
   countRef,
   timeRef,
+  source,
+  ghost,
+  activeRef,
+  speed = 54,
 }: {
   hostRef: RefObject<HTMLElement | null>;
   countRef: RefObject<HTMLSpanElement | null>;
   timeRef: RefObject<HTMLSpanElement | null>;
+  /** real telemetry (seconds → amplitude units); synthetic noise until it is set */
+  source?: RefObject<Sampler | null>;
+  ghost?: RefObject<Sampler | null>;
+  /** skip work while the scope is not on screen (e.g. inside a pinned scene) */
+  activeRef?: RefObject<boolean>;
+  /** px per second the trace scrolls */
+  speed?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -103,8 +114,10 @@ export function SignalCanvas({
       return { mid, A, thY: mid - TH * A };
     };
 
+    const sig = (s: number) => (source?.current ? source.current(s / speed) : baseSignal(s));
+
     const valueAt = (s: number, x: number, t: number) => {
-      let v = baseSignal(s);
+      let v = sig(s);
       for (const b of bursts) v += burstAt(b, s);
       if (pointer.active && fine) {
         const dx = (x - pointer.x) / 46;
@@ -178,7 +191,7 @@ export function SignalCanvas({
         ctx!.beginPath();
         for (let i = 0; i < n; i++) {
           const s = xs[i] + scroll;
-          const v = 0.55 * Math.sin(s * 0.019 + 2) + 0.25 * vnoise(s * 0.06 + 40);
+          const v = ghost?.current ? ghost.current(s / speed) : 0.55 * Math.sin(s * 0.019 + 2) + 0.25 * vnoise(s * 0.06 + 40);
           const y = mid + A * 1.25 - v * A * 0.3;
           i ? ctx!.lineTo(xs[i], y) : ctx!.moveTo(xs[i], y);
         }
@@ -319,7 +332,11 @@ export function SignalCanvas({
       const dt = Math.min(0.05, (now - lastT) / 1000 || 0);
       lastT = now;
       const t = now / 1000;
-      scroll += SPEED * dt;
+      if (activeRef && !activeRef.current) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
+      scroll += speed * dt;
 
       // pointer energy: spring toward current speed, decays when still
       pointer.energy += (Math.min(pointer.speed / 14, 1) - pointer.energy) * 0.12;
@@ -357,7 +374,7 @@ export function SignalCanvas({
         if (b.counted) continue;
         const x = b.s - scroll;
         if (x < 0 || x > W) continue;
-        let v = baseSignal(b.s);
+        let v = sig(b.s);
         for (const o of bursts) v += burstAt(o, b.s);
         if (v > TH) {
           b.counted = true;
@@ -368,7 +385,7 @@ export function SignalCanvas({
 
       if (t - lastReadout > 0.1 && timeRef.current) {
         lastReadout = t;
-        timeRef.current.textContent = (scroll / SPEED).toFixed(1);
+        timeRef.current.textContent = (scroll / speed).toFixed(1);
       }
 
       draw(now);
@@ -429,7 +446,7 @@ export function SignalCanvas({
       host.removeEventListener("pointerleave", onLeave);
       host.removeEventListener("pointerdown", onDown);
     };
-  }, [hostRef, countRef, timeRef]);
+  }, [hostRef, countRef, timeRef, source, ghost, activeRef, speed]);
 
   return <canvas ref={canvasRef} className="scope-canvas" aria-hidden />;
 }

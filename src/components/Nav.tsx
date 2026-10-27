@@ -16,6 +16,9 @@ export function Nav() {
     setSolid(y > 24);
     setHidden(y > 640 && y > prev + 2);
     if (y < prev - 2) setHidden(false);
+    // the hero is a tall pinned scene, so "top" is anything above the first section
+    const first = document.getElementById(nav[0].id);
+    if (first && y < first.offsetTop - window.innerHeight * 0.5) setActive(null);
   });
 
   useEffect(() => {
@@ -27,13 +30,7 @@ export function Nav() {
       { rootMargin: "-45% 0px -50% 0px" },
     );
     els.forEach((el) => io.observe(el));
-    const top = new IntersectionObserver(([e]) => e.isIntersecting && setActive(null), { threshold: 0.4 });
-    const hero = document.getElementById("top");
-    if (hero) top.observe(hero);
-    return () => {
-      io.disconnect();
-      top.disconnect();
-    };
+    return () => io.disconnect();
   }, []);
 
   return (
