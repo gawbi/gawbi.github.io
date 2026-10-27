@@ -1,0 +1,57 @@
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 4vw, 56px);
+  background: rgba(4, 5, 7, 0.86);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.modal-frame {
+  width: min(1280px, 100%);
+  aspect-ratio: 16 / 9;
+  max-height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 40px 120px -20px rgba(0, 0, 0, 0.9);
+}
+
+.modal-frame video {
+  width: 100%;
+  height: 100%;
+}
+
+.modal-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line-2);
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 200ms ease;
+}
+
+.modal-close:active {
+  transform: scale(0.94);
+}
+
+.modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .modal-close:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
